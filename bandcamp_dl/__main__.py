@@ -74,59 +74,54 @@ def main():
                         action='store_true', default=conf.no_confirm)
 
     arguments = parser.parse_args()
-    if arguments.version:
+    conf.update_with_dict(vars(arguments))
+
+    if conf.version:
         sys.stdout.write(f"bandcamp-dl {__version__}\n")
         return
 
-    if arguments.debug:
+    if conf.debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
     logging_handle = "bandcamp-dl"
     logger = logging.getLogger(logging_handle)
 
-    # TODO: Its possible to break bandcamp-dl temporarily by simply erasing a line in the config, catch this and warn.
-    arguments = config.init_config(parser)
-    logger.debug(f"Config/Args: {arguments}")
-    if not arguments.URL:
+    logger.debug(f"Config/Args: {conf}")
+    if not conf.URL:
         parser.print_usage()
         sys.stderr.write(f"{pathlib.Path(sys.argv[0]).name}: error: the following arguments are "
                          f"required: URL\n")
         sys.exit(2)
 
-    for arg, val in [('base_dir', config.USER_HOME), ('template', config.TEMPLATE),
-                     ('ok_chars', config.OK_CHARS), ('space_char', config.SPACE_CHAR)]:
-        if not getattr(arguments, arg):
-            setattr(arguments, arg, val)
     bandcamp = Bandcamp()
 
-    if arguments.artist and arguments.album:
-        urls = Bandcamp.generate_album_url(arguments.artist, arguments.album, "album")
-    elif arguments.artist and arguments.track:
-        urls = Bandcamp.generate_album_url(arguments.artist, arguments.track, "track")
-    elif arguments.artist:
-        urls = Bandcamp.get_full_discography(arguments.artist, "music")
+    if conf.artist and conf.album:
+        urls = Bandcamp.generate_album_url(conf.artist, conf.album, "album")
+    elif conf.artist and conf.track:
+        urls = Bandcamp.generate_album_url(conf.artist, conf.track, "track")
+    elif conf.artist:
+        urls = Bandcamp.get_full_discography(conf.artist, "music")
     else:
-        urls = arguments.URL
+        urls = conf.URL
 
     album_list = []
 
     for url in urls:
         logger.debug("\n\tURL: %s", url)
-        album_list.append(bandcamp.parse(url, not arguments.no_art, arguments.embed_lyrics,
-                                         arguments.debug))
+        album_list.append(bandcamp.parse(url, not conf.no_art, conf.embed_lyrics, conf.debug))
 
     for album in album_list:
         logger.debug(f" Album data:\n\t{album}")
-        if arguments.full_album and not album['full']:
+        if conf.full_album and not album['full']:
             print("Full album not available. Skipping ", album['title'], " ...")
             # Remove not-full albums BUT continue with the rest of the albums.
             album_list.remove(album)
 
-    if arguments.URL or arguments.artist:
+    if conf.URL or conf.artist:
         logger.debug("Preparing download process..")
         for album in album_list:
-            bandcamp_downloader = BandcampDownloader(arguments, album['url'])
+            bandcamp_downloader = BandcampDownloader(conf, album['url'])
             logger.debug("Initiating download process..")
             bandcamp_downloader.start(album)
             # Add a newline to stop prompt mangling

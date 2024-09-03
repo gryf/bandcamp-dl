@@ -34,6 +34,12 @@ class Config(dict):
                  "keep_upper": False,
                  "no_confirm": False,
                  "debug": False}
+    _additional_keys = {"artist": None,
+                        "URL": [],
+                        "version": False,
+                        "track": None,
+                        "album": None,
+                        "full_album": False}
 
     def __init__(self, dict_=None):
         if dict_ is None:
@@ -51,7 +57,7 @@ class Config(dict):
                     # change hyphen with undersore
                     user_config = {k.replace('-', '_'): v for k, v in user_config.items()}
                     # overwrite defaults with user provided config
-                    self.update_with_dict(user_config)
+                    self.update_with_dict(user_config, defaults_only=True)
                 except json.JSONDecodeError:
                     # NOTE: we don't have logger yet
                     sys.stderr.write(f"Malformed configuration file `{CONFIG_PATH}'. Check json syntax.\n")
@@ -62,8 +68,7 @@ class Config(dict):
                 json.dump(conf, fobj)
             sys.stderr.write(f"Configuration has been written to `{CONFIG_PATH}'.\n")
 
-    def update_with_dict(self, dict_):
+    def update_with_dict(self, dict_, defaults_only=False):
         for key, val in dict_.items():
-            if key not in self:
-                continue
-            self[key] = val
+            if key in self or key in self._additional_keys and not defaults_only:
+                self[key] = val
